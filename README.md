@@ -80,15 +80,17 @@ If you want to contribute or build from source, follow these steps:
 
 ## 📸 Screenshots
 
-````carousel
+### Dashboard & Stash
 ![Dashboard & Stash](public/screenshots/stash.png)
-<!-- slide -->
+
+### Strategy Optimizer
 ![Strategy Optimizer](public/screenshots/optimizer.png)
-<!-- slide -->
+
+### Custom Scoring Weights
 ![Custom Scoring Weights](public/screenshots/settings.png)
-<!-- slide -->
+
+### In-depth Guide
 ![In-depth Guide](public/screenshots/how_to_use.png)
-````
 
 > [!TIP]
 > Use the **Strategy Selector** in the sidebar to quickly switch between pre-configured farming metas!
