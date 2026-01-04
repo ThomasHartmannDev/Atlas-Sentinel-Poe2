@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useStore } from '../store';
 import { findBestSets } from '../lib/optimizer';
 import { STRATEGIES, type StrategyName } from '../lib/strategies';
 import { StrategySelector } from './StrategySelector';
-import { TrendingUp, Plus, Copy, CheckCircle2, Sparkles, Info, Check, AlertTriangle, X } from 'lucide-react';
+import { TrendingUp, Plus, Copy, Sparkles, Info, Check, AlertTriangle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { POE2_MODS_DATABASE } from '../lib/mods_database';
 
 export const Optimizer: React.FC = () => {
     const { items, weights, activeStrategy, customStrategies, markAsUsed } = useStore();
@@ -15,7 +16,10 @@ export const Optimizer: React.FC = () => {
     });
 
     const strategy = STRATEGIES[activeStrategy as StrategyName] || customStrategies[activeStrategy];
-    const bestSets = findBestSets(items, weights);
+
+    const bestSets = useMemo(() =>
+        findBestSets(items, activeStrategy),
+        [items, weights, activeStrategy]);
 
     if (!strategy) return null;
 
@@ -67,6 +71,21 @@ export const Optimizer: React.FC = () => {
 
             <main className="flex-1 overflow-auto p-8 custom-scrollbar">
                 <div className="max-w-[1600px] mx-auto w-full min-h-0 space-y-8 pr-2">
+                    {/* Strategy Disclaimer */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4 flex items-start gap-4 backdrop-blur-sm"
+                    >
+                        <AlertTriangle className="text-amber-400 shrink-0 mt-0.5" size={18} />
+                        <div className="space-y-1">
+                            <h4 className="text-sm font-black text-amber-400 uppercase tracking-tight">Pro Tip: Generic vs Custom</h4>
+                            <p className="text-xs text-slate-400 leading-relaxed font-medium italic">
+                                Built-in strategies are generic starting points. For maximum efficiency, head to the <span className="text-indigo-400 font-bold underline">Juicing Lab</span> and engineer a <span className="text-white font-bold">Custom Profile</span> tailored exactly to your items and expectations!
+                            </p>
+                        </div>
+                    </motion.div>
+
                     {bestSets.length === 0 ? (
                         <motion.div
                             initial={{ opacity: 0 }}
@@ -165,6 +184,28 @@ export const Optimizer: React.FC = () => {
 
 const SetCard: React.FC<{ set: any, rank: number, strategy: any, onUsed: () => void }> = ({ set, rank, strategy, onUsed }) => {
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [hoveredItem, setHoveredItem] = useState<any | null>(null);
+    const [hoverTimeout, setHoverTimeout] = useState<any | null>(null);
+    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        setMousePos({ x: e.clientX, y: e.clientY });
+    };
+
+    const handleMouseEnter = (item: any, e: React.MouseEvent) => {
+        setMousePos({ x: e.clientX, y: e.clientY });
+        if (hoverTimeout) clearTimeout(hoverTimeout);
+        const timeout = setTimeout(() => {
+            setHoveredItem(item);
+        }, 400);
+        setHoverTimeout(timeout);
+    };
+
+    const handleMouseLeave = () => {
+        if (hoverTimeout) clearTimeout(hoverTimeout);
+        setHoverTimeout(null);
+        setHoveredItem(null);
+    };
 
     const triggerCopy = (text: string, id: string) => {
         navigator.clipboard.writeText(text);
@@ -177,13 +218,26 @@ const SetCard: React.FC<{ set: any, rank: number, strategy: any, onUsed: () => v
         navigator.clipboard.writeText(text);
     };
 
+    const getMetaMods = (item: any) => {
+        const targetIds = strategy?.targetModIds || [];
+        return POE2_MODS_DATABASE.filter(mod =>
+            item.originalText.toLowerCase().includes(mod.text.toLowerCase())
+        ).map(mod => ({
+            ...mod,
+            isTarget: targetIds.includes(mod.id)
+        }));
+    };
+
+    const waystoneMeta = getMetaMods(set.waystone);
+    const isWaystoneGodRoll = waystoneMeta.filter(m => m.isTarget).length >= 2;
+
     return (
         <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
             transition={{ delay: rank * 0.1 }}
-            className="group relative bg-slate-900 border border-slate-800 rounded-2xl lg:rounded-[2rem] overflow-hidden hover:border-cyan-500/40 transition-all duration-500"
+            className={`group relative bg-slate-900 border border-slate-800 rounded-2xl lg:rounded-[2rem] overflow-hidden hover:border-cyan-500/40 transition-all duration-500 ${hoveredItem ? 'z-50' : 'z-0'}`}
         >
             <div className="absolute top-0 left-0 w-2 h-full" style={{ backgroundColor: strategy.color }} />
 
@@ -207,9 +261,11 @@ const SetCard: React.FC<{ set: any, rank: number, strategy: any, onUsed: () => v
                                 <div>
                                     <div className="relative">
                                         <h4
+                                            onMouseEnter={(e) => handleMouseEnter(set.waystone, e)}
+                                            onMouseMove={handleMouseMove}
+                                            onMouseLeave={handleMouseLeave}
                                             onClick={() => triggerCopy(set.waystone.name, 'waystone')}
                                             className="text-lg sm:text-xl font-black text-white leading-tight hover:text-cyan-400 transition-colors cursor-pointer active:scale-95"
-                                            title="Click to copy waystone name"
                                         >
                                             {set.waystone.name}
                                         </h4>
@@ -228,6 +284,28 @@ const SetCard: React.FC<{ set: any, rank: number, strategy: any, onUsed: () => v
                                     </div>
                                     <span className="text-xs font-bold text-slate-500 italic">Tier {set.waystone.tier}</span>
                                 </div>
+                            </div>
+
+                            {/* Waystone Meta Badges */}
+                            <div className="mt-4 flex flex-wrap gap-2">
+                                {isWaystoneGodRoll && (
+                                    <div className="px-2 py-0.5 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/50 rounded-md flex items-center gap-1">
+                                        <Sparkles size={10} className="text-amber-400 animate-pulse" />
+                                        <span className="text-[9px] font-black text-amber-400 uppercase tracking-tighter">God Roll</span>
+                                    </div>
+                                )}
+                                {waystoneMeta.map(mod => (
+                                    <div
+                                        key={mod.id}
+                                        className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-tighter border flex items-center gap-1 ${mod.isTarget
+                                            ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
+                                            : 'bg-slate-800 border-slate-700 text-slate-400'
+                                            }`}
+                                    >
+                                        {mod.isTarget && <Check size={8} />}
+                                        {mod.text.split(' ').slice(-2).join(' ')}
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
@@ -280,31 +358,22 @@ const SetCard: React.FC<{ set: any, rank: number, strategy: any, onUsed: () => v
 
                     <div className="flex flex-col gap-3 lg:gap-4">
                         {set.tablets.map((tablet: any, tidx: number) => {
-                            const statsToShow = strategy.synergyStats ||
-                                Object.entries(strategy.weights)
-                                    .filter(([, v]) => (v as number) > 0)
-                                    .map(([k]) => {
-                                        const map: Record<string, string> = {
-                                            quantity: 'itemQuantity',
-                                            rarity: 'itemRarity'
-                                        };
-                                        return map[k] || k;
-                                    })
-                                    .slice(0, 3);
                             return (
                                 <motion.div
                                     key={`${tablet.id}-${tidx}`}
-                                    className="p-4 sm:p-5 bg-slate-900/50 border border-slate-800 rounded-2xl group/tablet hover:border-indigo-500/50 transition-all duration-300 flex items-center justify-between relative overflow-hidden"
+                                    className="p-4 sm:p-5 bg-slate-900/50 border border-slate-800 rounded-2xl group/tablet hover:border-indigo-500/50 transition-all duration-300 flex items-center justify-between relative"
                                 >
-                                    <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500/10 group-hover/tablet:bg-indigo-500/40 transition-colors" />
+                                    <div className="absolute top-0 left-0 w-1 h-full rounded-l-2xl bg-indigo-500/10 group-hover/tablet:bg-indigo-500/40 transition-colors" />
 
                                     <div className="flex flex-col pl-2">
                                         <span className="text-[10px] font-black text-slate-600 uppercase mb-1 block">Slot {tidx + 1}</span>
                                         <div className="relative">
                                             <h6
+                                                onMouseEnter={(e) => handleMouseEnter(tablet, e)}
+                                                onMouseMove={handleMouseMove}
+                                                onMouseLeave={handleMouseLeave}
                                                 onClick={() => triggerCopy(tablet.name, tablet.id)}
                                                 className="text-base lg:text-lg font-black text-slate-200 leading-tight hover:text-indigo-300 transition-colors cursor-pointer active:scale-95"
-                                                title="Click to copy tablet name"
                                             >
                                                 {tablet.name}
                                             </h6>
@@ -321,19 +390,27 @@ const SetCard: React.FC<{ set: any, rank: number, strategy: any, onUsed: () => v
                                                 )}
                                             </AnimatePresence>
                                         </div>
-                                        <div className="flex flex-wrap items-center gap-3 mt-2 lg:mt-3">
-                                            {statsToShow.map((statKey: string) => {
-                                                const val = (tablet.stats as any)[statKey];
-                                                if (val <= 0) return null;
+                                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                                            {/* Tablet Meta Badges */}
+                                            {(() => {
+                                                const meta = getMetaMods(tablet);
+                                                const isGod = meta.filter(m => m.isTarget).length >= 2;
                                                 return (
-                                                    <div key={statKey} className="flex items-center gap-1 bg-indigo-500/5 px-1.5 py-0.5 rounded border border-indigo-500/10">
-                                                        <CheckCircle2 size={8} className="text-indigo-400" />
-                                                        <span className="text-[9px] font-black text-indigo-300/80 uppercase tracking-tighter tabular-nums">
-                                                            {statKey.replace('item', '')}: {val}%
-                                                        </span>
-                                                    </div>
+                                                    <>
+                                                        {isGod && (
+                                                            <div className="px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/30 rounded flex items-center gap-0.5">
+                                                                <Sparkles size={8} className="text-amber-400" />
+                                                                <span className="text-[8px] font-black text-amber-400 uppercase tracking-tighter">God</span>
+                                                            </div>
+                                                        )}
+                                                        {meta.map(m => (
+                                                            <div key={m.id} className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase border ${m.isTarget ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300' : 'bg-slate-800 border-slate-700 text-slate-500'}`}>
+                                                                {m.text.includes('Quantity') ? 'Quantity' : m.text.includes('Rarity') ? 'Rarity' : m.text.includes('Pack') ? 'Pack Size' : m.text.includes('Logbooks') ? 'Logbooks' : 'Meta'}
+                                                            </div>
+                                                        ))}
+                                                    </>
                                                 );
-                                            })}
+                                            })()}
                                         </div>
                                     </div>
 
@@ -354,6 +431,108 @@ const SetCard: React.FC<{ set: any, rank: number, strategy: any, onUsed: () => v
                     </div>
                 </div>
             </div>
+            {hoveredItem && (
+                <ItemTooltip item={hoveredItem} mousePos={mousePos} strategy={strategy} />
+            )}
         </motion.div>
+    );
+};
+
+const ItemTooltip: React.FC<{ item: any, mousePos: { x: number, y: number }, strategy: any }> = ({ item, mousePos, strategy }) => {
+    const targetIds = strategy?.targetModIds || [];
+
+    // Process text to remove redundant info
+    const text = item.originalText || item.rawText || '';
+    const lines = text.split('\n')
+        .filter((l: string) => !l.includes('--------'))
+        .filter((l: string) => !l.includes('Item Class:'))
+        .filter((l: string) => !l.includes('Rarity:'))
+        .slice(0, 15);
+
+    const getModHighlight = (line: string) => {
+        const foundMod = POE2_MODS_DATABASE.find(m =>
+            line.toLowerCase().includes(m.text.toLowerCase())
+        );
+        if (!foundMod) return null;
+        return {
+            isTarget: targetIds.includes(foundMod.id),
+            mod: foundMod
+        };
+    };
+
+    const detectedTags = useMemo(() => {
+        const tags = new Set<string>();
+        POE2_MODS_DATABASE.forEach(modDef => {
+            if (item.originalText?.toLowerCase().includes(modDef.text.toLowerCase())) {
+                modDef.tags.forEach(tag => tags.add(tag));
+            }
+        });
+        return Array.from(tags);
+    }, [item]);
+
+    const isNearTop = mousePos.y < 450;
+    const isNearRight = window.innerWidth - mousePos.x < 320;
+    const isNearLeft = mousePos.x < 200;
+
+    const transformX = isNearRight ? '-100%' : isNearLeft ? '0%' : '-50%';
+    const transformY = isNearTop ? '15px' : 'calc(-100% - 15px)';
+
+    return (
+        <div
+            style={{
+                position: 'fixed',
+                top: `${mousePos.y}px`,
+                left: `${mousePos.x}px`,
+                pointerEvents: 'none',
+                zIndex: 9999,
+                transform: `translate(${transformX}, ${transformY})`,
+            }}
+            className="w-[320px] max-h-[85vh] bg-slate-900/98 border border-slate-700 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.6)] p-4 backdrop-blur-xl overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 pointer-events-none"
+        >
+            <div className="flex flex-col gap-2">
+                <div className="border-b border-slate-800 pb-2 mb-2">
+                    <div className="flex justify-between items-start mb-1">
+                        <div className="text-[10px] font-black text-cyan-500 uppercase tracking-widest">{item.type}</div>
+                        <div className="flex gap-1">
+                            {detectedTags.map(tag => (
+                                <span key={tag} className="px-1 py-0.5 bg-indigo-500/10 border border-indigo-500/20 rounded text-[7px] font-black text-indigo-400 uppercase">
+                                    {tag}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="text-sm font-black text-white leading-tight">{item.name}</div>
+                </div>
+                <div className="space-y-1.5">
+                    {lines.map((line: string, idx: number) => {
+                        const highlight = getModHighlight(line);
+                        const isMainStat = line.includes(':') && !line.includes('(');
+
+                        if (highlight) {
+                            return (
+                                <div key={idx} className={`text-[11px] leading-relaxed p-1 rounded border flex items-center gap-1.5 ${highlight.isTarget
+                                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-black'
+                                    : 'bg-amber-500/5 border-amber-500/20 text-amber-300 font-bold'
+                                    }`}>
+                                    <Sparkles size={8} className={highlight.isTarget ? 'animate-pulse' : ''} />
+                                    {line}
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <div key={idx} className={`text-[11px] leading-relaxed px-1 ${isMainStat ? 'text-slate-400 font-bold italic' : 'text-slate-500'}`}>
+                                {line}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            <div className="mt-3 pt-2 border-t border-slate-800 flex items-center justify-center gap-2">
+                <div className="w-1 h-1 rounded-full bg-cyan-500 animate-pulse" />
+                <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Click to copy name</span>
+            </div>
+        </div>
     );
 };

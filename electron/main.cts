@@ -1,5 +1,6 @@
-import { app, BrowserWindow, clipboard, ipcMain, nativeImage } from 'electron';
+import { app, BrowserWindow, clipboard, ipcMain, nativeImage, globalShortcut } from 'electron';
 import path from 'path';
+import https from 'https';
 
 let mainWindow: BrowserWindow | null;
 let lastClipboardText = '';
@@ -9,18 +10,68 @@ if (process.platform === 'win32') {
     app.setAppUserModelId('com.poe2.atlassentinel');
 }
 
+const REPO_URL = 'ThomasHartmannDev/Atlas-Sentinel-Poe2';
+const CURRENT_VERSION = '1.1.0';
+
+/**
+ * Checks GitHub for a newer release.
+ */
+function checkForUpdates() {
+    console.log('Main: Checking for updates...');
+    const options = {
+        hostname: 'api.github.com',
+        path: `/repos/${REPO_URL}/releases/latest`,
+        headers: {
+            'User-Agent': 'Atlas-Sentinel-App'
+        }
+    };
+
+    https.get(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => { data += chunk; });
+        res.on('end', () => {
+            try {
+                const release = JSON.parse(data);
+                if (release && release.tag_name) {
+                    const latestVersion = release.tag_name.replace('v', '');
+                    console.log(`Main: Local version: ${CURRENT_VERSION}, Latest on GitHub: ${latestVersion}`);
+
+                    if (latestVersion !== CURRENT_VERSION && mainWindow && !mainWindow.isDestroyed()) {
+                        mainWindow.webContents.send('update-available', {
+                            version: latestVersion,
+                            url: release.html_url,
+                            notes: release.body
+                        });
+                    }
+                }
+            } catch (e) {
+                console.error('Main: Failed to parse GitHub release data:', e);
+            }
+        });
+    }).on('error', (err) => {
+        console.error('Main: Update check failed:', err);
+    });
+}
+
 function startClipboardPoll() {
     setInterval(() => {
-        const text = clipboard.readText();
-        if (text && text !== lastClipboardText) {
-            lastClipboardText = text;
-            // Simple heuristic to avoid spamming non-PoE text: check for key phrases
-            // But for now, just send everything and let renderer filter
-            if (mainWindow && !mainWindow.isDestroyed()) {
-                mainWindow.webContents.send('clipboard-update', text);
+        try {
+            const text = clipboard.readText();
+            if (text && text !== lastClipboardText) {
+                lastClipboardText = text;
+
+                // Heuristic: only send if it looks like a PoE item (contains "Rarity:" or "Item Class:")
+                // This reduces IPC noise and fixes some issues with other apps
+                const isPoE = text.includes('Rarity:') || text.includes('Item Class:') || text.includes('Classe de Item:') || text.includes('Raridade:');
+
+                if (isPoE && mainWindow && !mainWindow.isDestroyed()) {
+                    mainWindow.webContents.send('clipboard-update', text);
+                }
             }
+        } catch (err) {
+            console.error('Clipboard poll error:', err);
         }
-    }, 500);
+    }, 500); // 500ms is a bit more conservative but reliable
 }
 
 function createWindow() {
@@ -63,9 +114,11 @@ function createWindow() {
         mainWindow?.close();
     });
 
+
+
     if (process.env.NODE_ENV === 'development') {
         mainWindow.loadURL('http://localhost:5173');
-        mainWindow.webContents.openDevTools();
+        // mainWindow.webContents.openDevTools();
     } else {
         mainWindow.loadFile(path.join(app.getAppPath(), 'dist/index.html'));
     }
@@ -78,6 +131,11 @@ function createWindow() {
 app.whenReady().then(() => {
     createWindow();
     startClipboardPoll();
+
+    // Check for updates shortly after startup
+    setTimeout(checkForUpdates, 5000);
+    // And then every hour
+    setInterval(checkForUpdates, 1000 * 60 * 60);
 });
 
 app.on('window-all-closed', () => {

@@ -1,6 +1,5 @@
 import type { ParsedItem } from '../types';
-import type { ScoringWeights } from './strategies';
-import { STRATEGIES } from './strategies';
+import { calculateItemBaseScore, calculateSetScore } from './scoring';
 
 export interface OptimizedSet {
     waystone: ParsedItem;
@@ -8,70 +7,68 @@ export interface OptimizedSet {
     totalScore: number;
 }
 
-export const findBestSets = (items: ParsedItem[], weights: ScoringWeights): OptimizedSet[] => {
+export const findBestSets = (items: ParsedItem[], activeStrategy: string): OptimizedSet[] => {
     const waystones = items.filter(i => i.type === 'Waystone');
-    const tablets = items.filter(i => i.type === 'Tablet'); // || i.type === 'Precursor'
+    const tablets = items.filter(i => i.type === 'Tablet');
 
     if (waystones.length === 0 || tablets.length < 3) return [];
 
     const sets: OptimizedSet[] = [];
 
-    // Naive approach: For each waystone, find the 3 highest scoring tablets (based on current weights)
-    // First, score all tablets with current weights
-    const strategy = Object.values(STRATEGIES).find(s => s.weights === weights);
-    const synergyStats = strategy?.synergyStats || [];
-
+    // Calculate base scores for preliminary sorting
     const scoredTablets = tablets.map(t => ({
         ...t,
-        currentScore: scoreItem(t, weights, synergyStats)
-    })).sort((a, b) => b.currentScore - a.currentScore);
+        baseScore: calculateItemBaseScore(t, activeStrategy)
+    })).sort((a, b) => {
+        const diff = b.baseScore - a.baseScore;
+        if (diff !== 0) return diff;
+        return a.id.localeCompare(b.id);
+    });
 
-    // Take top 3 tablets generally? No, we might want to pair specific tablets.
-    // Requirement: "Best 1 Waystone + 3 Tablets".
-    // For MVP: We assume tablets have intrinsic value based on stats.
+    // Strategy requires 3 tablets. 
+    // To keep it performant but allow for synergy, we'll look at the top 10 tablets 
+    // and find the best combination of 3 for each waystone.
+    const candidateTablets = scoredTablets.slice(0, 10);
+    if (candidateTablets.length < 3) return [];
 
-    const top3Tablets = scoredTablets.slice(0, 3);
-    if (top3Tablets.length < 3) return [];
-
-    const tabletScoreSum = top3Tablets.reduce((sum, t) => sum + t.currentScore, 0);
-
-    // Score waystones
     const scoredWaystones = waystones.map(w => ({
         ...w,
-        currentScore: scoreItem(w, weights, synergyStats)
+        baseScore: calculateItemBaseScore(w, activeStrategy)
     }));
 
-    // Create sets
+    // For each waystone, find the best combination of 3 from the top 10
     for (const w of scoredWaystones) {
-        sets.push({
-            waystone: w,
-            tablets: top3Tablets,
-            totalScore: w.currentScore + tabletScoreSum
-        });
+        let bestCombination: ParsedItem[] = [];
+        let bestSetScore = -1;
+
+        // Triple loop for combinations (C(10,3) = 120, which is fine)
+        for (let i = 0; i < candidateTablets.length; i++) {
+            for (let j = i + 1; j < candidateTablets.length; j++) {
+                for (let k = j + 1; k < candidateTablets.length; k++) {
+                    const combo = [candidateTablets[i], candidateTablets[j], candidateTablets[k]];
+                    const score = calculateSetScore(w, combo, activeStrategy);
+
+                    if (score > bestSetScore) {
+                        bestSetScore = score;
+                        bestCombination = combo;
+                    }
+                }
+            }
+        }
+
+        if (bestCombination.length === 3) {
+            sets.push({
+                waystone: w,
+                tablets: bestCombination,
+                totalScore: bestSetScore
+            });
+        }
     }
 
-    // Sort by total score and top 5
-    return sets.sort((a, b) => b.totalScore - a.totalScore).slice(0, 5);
+    // Sort by total score and get top 5
+    return sets.sort((a, b) => {
+        const diff = b.totalScore - a.totalScore;
+        if (diff !== 0) return diff;
+        return a.waystone.id.localeCompare(b.waystone.id);
+    }).slice(0, 5);
 };
-
-// Helper duplication of scoring if not easily imported from worker/scoring.ts
-// Ideally we refactor scoring.ts to be usable here.
-function scoreItem(item: ParsedItem, weights: ScoringWeights, synergyStats: string[] = []): number {
-    let score = 0;
-    const s = item.stats;
-
-    // Synergy multiplier: Stats focused by the strategy get a 1.5x weight bonus
-    const getWeight = (key: keyof ScoringWeights, statName: string) => {
-        const base = weights[key];
-        return synergyStats.includes(statName) ? base * 1.5 : base;
-    };
-
-    score += s.itemQuantity * getWeight('quantity', 'itemQuantity');
-    score += s.itemRarity * getWeight('rarity', 'itemRarity');
-    score += s.packSize * getWeight('packSize', 'packSize');
-    score += (s.gold || 0) * getWeight('gold', 'gold');
-    score += (s.delirium || 0) * getWeight('delirium', 'delirium');
-
-    if (item.corrupted) score += weights.corruptionBonus;
-    return score;
-}

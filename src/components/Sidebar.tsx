@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, Settings, TrendingUp, Map as MapIcon, Archive, HelpCircle } from 'lucide-react';
+import { BarChart3, Settings, TrendingUp, Map as MapIcon, Archive, HelpCircle, FlaskConical, Heart } from 'lucide-react';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
 
@@ -12,10 +12,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) =>
     const items = [
         { id: 'dashboard', icon: Archive, label: 'Stash' },
         { id: 'optimizer', icon: TrendingUp, label: 'Optimizer' },
+        { id: 'juicing-lab', icon: FlaskConical, label: 'Juicing Lab' },
         { id: 'atlas-guide', icon: MapIcon, label: 'Strategy Guide' },
         { id: 'analysis', icon: BarChart3, label: 'Archive' },
         { id: 'settings', icon: Settings, label: 'Settings' },
         { id: 'how-to-use', icon: HelpCircle, label: 'How to Use' },
+        { id: 'wanna-help', icon: Heart, label: 'Wanna Help?' },
     ];
 
     return (
@@ -66,13 +68,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) =>
             </nav>
 
             {/* Footer Status */}
-            <div className="mt-auto px-8 py-4">
-                <div className="p-4 bg-slate-950/50 border border-slate-800 rounded-2xl">
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">System Health</span>
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                    </div>
-                    <div className="text-[10px] font-bold text-slate-400">Stable Build • v1.0.0</div>
+            <div className="mt-auto px-10 py-6 border-t border-slate-800/50">
+                <div className="text-[10px] font-black text-slate-700 uppercase tracking-[0.4em]">
+                    Version: 1.1.0
                 </div>
             </div>
         </div>

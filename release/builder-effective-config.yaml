@@ -1,0 +1,18 @@
+directories:
+  output: release
+  buildResources: build
+appId: com.poe2.atlassentinel
+productName: Atlas Sentinel
+win:
+  target: nsis
+  icon: public/logo.png
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: Atlas Sentinel
+files:
+  - filter:
+      - dist/**/*
+      - dist-electron/**/*
+      - public/logo.png
+electronVersion: 39.2.7

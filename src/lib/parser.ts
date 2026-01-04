@@ -16,14 +16,21 @@ export const parseItem = (text: string): ParsedItem | null => {
     const isWaystone = text.includes('Waystones') ||
         text.includes('Waystone') ||
         text.includes('Pedra de Caminho') ||
-        text.includes('Pedras de Caminho');
+        text.includes('Pedras de Caminho') ||
+        text.includes('Pedra de Passagem') ||
+        text.includes('Pedra de Fronteira') ||
+        text.includes('Waystone (Tier');
 
     const isTablet = text.includes('Tablet') ||
         text.includes('Precursor') ||
         text.includes('Tábua') ||
-        text.includes('Precursora');
+        text.includes('Precursora') ||
+        text.includes('Precursor Tablet') ||
+        text.includes('Tábua Precursora');
 
-    if (!isWaystone && !isTablet) {
+    const hasItemClass = text.includes('Item Class:') || text.includes('Classe do Item:');
+
+    if (!isWaystone && !isTablet && !hasItemClass) {
         console.warn('Parser: Non-relevant item text detected');
         return null;
     }

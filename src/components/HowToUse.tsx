@@ -6,12 +6,12 @@ import {
     Zap,
     Archive,
     TrendingUp,
-    Settings as SettingsIcon,
-    Copy,
     MousePointer2,
     Shield,
     Sparkles,
-    CheckCircle2
+    CheckCircle2,
+    FlaskConical,
+    Keyboard
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -29,8 +29,8 @@ export const HowToUse: React.FC = () => {
                     icon: Shield
                 },
                 {
-                    text: "Hover over any Waystone or Tablet and press Ctrl + C.",
-                    icon: Copy
+                    text: "Hover over any Waystone or Tablet and use Ctrl + C (the default PoE copy command).",
+                    icon: Keyboard
                 },
                 {
                     text: "Atlas Sentinel will automatically detect, parse, and score the item based on your active strategy.",
@@ -47,20 +47,20 @@ export const HowToUse: React.FC = () => {
             description: "Manage your collected items here. View scores, stats, and delete items you no longer need.",
             tips: [
                 "Click on an item's name to quickly copy it to your clipboard for ingame searching.",
-                "Use the 'Manual Import' button if the automatic sync is disabled or fails."
+                "The app monitors your clipboard for items. Just make sure the 'Active' indicator is on."
             ]
         },
         {
-            title: "Strategies & Weights",
-            icon: SettingsIcon,
+            title: "Juicing Lab & Profiles",
+            icon: FlaskConical,
             color: "text-cyan-400",
             bg: "bg-cyan-400/10",
             border: "border-cyan-400/20",
-            description: "Everything in the app is calculated based on Weights. Configure them in Settings.",
+            description: "Engineer your custom farming cockatils and manage scoring profiles.",
             steps: [
                 { text: "Select a Strategy in the top selector to change how items are scored.", icon: MousePointer2 },
-                { text: "Adjust weights for specific mechanics like Currency, Gold, or Bossing to prioritize what matters to you.", icon: SettingsIcon },
-                { text: "Higher weights = Higher scores for items containing those stats.", icon: TrendingUp }
+                { text: "Go to Juicing Lab to create custom profiles with specific Tag Weights and Target Mods.", icon: FlaskConical },
+                { text: "Higher League Loyalty = Pure Meta. Higher Mix Mastery = Hybrid Cocktails.", icon: TrendingUp }
             ]
         },
         {

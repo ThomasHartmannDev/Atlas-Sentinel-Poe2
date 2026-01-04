@@ -18,7 +18,11 @@ interface AppState {
         name: string;
         description: string;
         color: string;
-        weights: ScoringWeights;
+        targetModIds?: string[];
+        tagWeights: Record<string, number>;
+        synergyMultiplier: number;
+        leagueLoyalty: number;
+        mixMastery: number;
     }>;
     setStrategy: (strategy: string) => void;
     validateState: () => void;
@@ -28,17 +32,25 @@ interface AppState {
         name: string;
         description: string;
         color: string;
-        weights: ScoringWeights;
+        targetModIds?: string[];
+        tagWeights: Record<string, number>;
+        synergyMultiplier: number;
+        leagueLoyalty: number;
+        mixMastery: number;
     }) => void;
     updateCustomStrategy: (id: string, strategy: Partial<{
         name: string;
         description: string;
         color: string;
-        weights: ScoringWeights;
+        targetModIds: string[];
+        tagWeights: Record<string, number>;
+        synergyMultiplier: number;
+        leagueLoyalty: number;
+        mixMastery: number;
     }>) => void;
     removeCustomStrategy: (id: string) => void;
 
-    // Weights
+    // Weights (Legacy, kept for structure but mostly ignored by new engine)
     weights: ScoringWeights;
     updateWeights: (newWeights: Partial<ScoringWeights>) => void;
 
@@ -62,9 +74,10 @@ export const useStore = create<AppState>()(
         (set) => ({
             items: [],
             addItem: (item) => set((state) => {
+                console.log('%c ITEM DETECTED: ' + item.name, 'background: #22c55e; color: white; font-weight: bold; padding: 2px 5px;');
                 const itemWithCorrectScore = {
                     ...item,
-                    score: calculateScore(item, state.weights, state.activeStrategy)
+                    score: calculateScore(item, state.activeStrategy)
                 };
                 return { items: [itemWithCorrectScore, ...state.items].slice(0, 100) };
             }),
@@ -84,7 +97,7 @@ export const useStore = create<AppState>()(
 
                 const newItems = state.items.map(item => ({
                     ...item,
-                    score: calculateScore(item, newWeights, strategy)
+                    score: calculateScore(item, strategy)
                 }));
                 return {
                     activeStrategy: strategy,
@@ -101,7 +114,7 @@ export const useStore = create<AppState>()(
                         weights: STRATEGIES[fallback].weights,
                         items: state.items.map(item => ({
                             ...item,
-                            score: calculateScore(item, STRATEGIES[fallback].weights, fallback)
+                            score: calculateScore(item, fallback)
                         }))
                     };
                 }
@@ -154,7 +167,7 @@ export const useStore = create<AppState>()(
 
                 const newItems = state.items.map(item => ({
                     ...item,
-                    score: calculateScore(item, safeWeights, state.activeStrategy)
+                    score: calculateScore(item, state.activeStrategy)
                 }));
                 return {
                     weights: safeWeights,
@@ -204,7 +217,7 @@ export const useStore = create<AppState>()(
         }),
         {
             name: 'atlas-sentinel-storage',
-            version: 3,
+            version: 10, // Revert hotkey
         }
     )
 );
