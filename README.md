@@ -114,7 +114,7 @@ You can:
 
 ## ✉️ Contact
 
-Project Maintainer: **Hartman**
+Project Maintainer: **Thomas Hartmann**
 
 ---
 *Disclaimer: This is a fan-made tool and is not affiliated with Grinding Gear Games.*
