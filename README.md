@@ -1,7 +1,7 @@
 # Atlas Sentinel Poe2 🛰️
 ### The Ultimate PoE 2 Atlas Strategy Optimizer
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Version](https://img.shields.io/badge/Version-1.1.0-blue.svg)](https://github.com/ThomasHartmannDev/Atlas-Sentinel-Poe2/releases)
 [![PoE 2](https://img.shields.io/badge/Game-Path%20of%20Exile%202-red.svg)](https://pathofexile2.com)
 
@@ -102,7 +102,7 @@ If you want to contribute or build from source, follow these steps:
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0) License - see the [LICENSE](LICENSE) file for details.
 
 ## 🤝 Contributing
 
